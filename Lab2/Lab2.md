@@ -1,0 +1,384 @@
+# Lab2
+
+
+## Цель работы
+
+1.  Развить практические навыки использования языка программирования R
+    для обработки данных
+2.  Закрепить знания базовых типов данных языка R
+3.  Развить практические навыки использования функций обработки данных
+    пакета dplyr – функции select(), filter(), mutate(), arrange(),
+    group_by()
+
+## Исходные данные
+
+1.  Rstudio Desktop;
+2.  Интерпретатор языка R 4.1;
+3.  Программный пакет `dplyr` и `knitr`.
+
+## План
+
+Проанализировать встроенный в пакет dplyr набор данных starwars с
+помощью языка R и ответить на вопросы.
+
+## Решение:
+
+1.  Сколько строк в starwars?
+
+<!-- -->
+
+    > nrow(starwars)
+    [1] 87
+
+1.  Сколько столбцов?
+
+<!-- -->
+
+    > ncol(starwars)
+    [1] 14
+
+1.  Как посмотреть примерный вид датафрейма?
+
+<!-- -->
+
+    > glimpse(starwars)
+    Rows: 87
+    Columns: 14
+    $ name       <chr> "Luke Skywalker", "C-3PO", "R2-D2", "Darth Vader", "Leia Organa", "Owen Lars", "B…
+    $ height     <int> 172, 167, 96, 202, 150, 178, 165, 97, 183, 182, 188, 180, 228, 180, 173, 175, 170…
+    $ mass       <dbl> 77.0, 75.0, 32.0, 136.0, 49.0, 120.0, 75.0, 32.0, 84.0, 77.0, 84.0, NA, 112.0, 80…
+    $ hair_color <chr> "blond", NA, NA, "none", "brown", "brown, grey", "brown", NA, "black", "auburn, w…
+    $ skin_color <chr> "fair", "gold", "white, blue", "white", "light", "light", "light", "white, red", …
+    $ eye_color  <chr> "blue", "yellow", "red", "yellow", "brown", "blue", "blue", "red", "brown", "blue…
+    $ birth_year <dbl> 19.0, 112.0, 33.0, 41.9, 19.0, 52.0, 47.0, NA, 24.0, 57.0, 41.9, 64.0, 200.0, 29.…
+    $ sex        <chr> "male", "none", "none", "male", "female", "male", "female", "none", "male", "male…
+    $ gender     <chr> "masculine", "masculine", "masculine", "masculine", "feminine", "masculine", "fem…
+    $ homeworld  <chr> "Tatooine", "Tatooine", "Naboo", "Tatooine", "Alderaan", "Tatooine", "Tatooine", …
+    $ species    <chr> "Human", "Droid", "Droid", "Human", "Human", "Human", "Human", "Droid", "Human", …
+    $ films      <list> <"A New Hope", "The Empire Strikes Back", "Return of the Jedi", "Revenge of the …
+    $ vehicles   <list> <"Snowspeeder", "Imperial Speeder Bike">, <>, <>, <>, "Imperial Speeder Bike", <…
+    $ starships  <list> <"X-wing", "Imperial shuttle">, <>, <>, "TIE Advanced x1", <>, <>, <>, <>, "X-wi…
+
+1.  Сколько уникальных рас персонажей (species) представлено в данных?
+
+<!-- -->
+
+    > starwars %>% distinct(species) %>% print(n = Inf)
+    # A tibble: 38 × 1
+       species       
+       <chr>         
+     1 Human         
+     2 Droid         
+     3 Wookiee       
+     4 Rodian        
+     5 Hutt          
+     6 NA            
+     7 Yoda's species
+     8 Trandoshan    
+     9 Mon Calamari  
+    10 Ewok          
+    11 Sullustan     
+    12 Neimodian     
+    13 Gungan        
+    14 Toydarian     
+    15 Dug           
+    16 Zabrak        
+    17 Twi'lek       
+    18 Aleena        
+    19 Vulptereen    
+    20 Xexto         
+    21 Toong         
+    22 Cerean        
+    23 Nautolan      
+    24 Tholothian    
+    25 Iktotchi      
+    26 Quermian      
+    27 Kel Dor       
+    28 Chagrian      
+    29 Geonosian     
+    30 Mirialan      
+    31 Clawdite      
+    32 Besalisk      
+    33 Kaminoan      
+    34 Skakoan       
+    35 Muun          
+    36 Togruta       
+    37 Kaleesh       
+    38 Pau'an
+
+1.  Найти самого высокого персонажа.
+
+<!-- -->
+
+    > print(starwars %>% select(name, height) %>% arrange(desc(height)), n=1)
+    # A tibble: 87 × 2
+      name        height
+      <chr>        <int>
+    1 Yarael Poof    264
+
+1.  Найти всех персонажей ниже 170.
+
+<!-- -->
+
+    > select(starwars, name, height) %>% filter(height<170) %>% print(n = Inf)
+    # A tibble: 22 × 2
+       name                  height
+       <chr>                  <int>
+     1 C-3PO                    167
+     2 R2-D2                     96
+     3 Leia Organa              150
+     4 Beru Whitesun Lars       165
+     5 R5-D4                     97
+     6 Yoda                      66
+     7 Mon Mothma               150
+     8 Wicket Systri Warrick     88
+     9 Nien Nunb                160
+    10 Watto                    137
+    11 Sebulba                  112
+    12 Shmi Skywalker           163
+    13 Ratts Tyerel              79
+    14 Dud Bolt                  94
+    15 Gasgano                  122
+    16 Ben Quadinaros           163
+    17 Cordé                    157
+    18 Barriss Offee            166
+    19 Dormé                    165
+    20 Zam Wesell               168
+    21 Jocasta Nu               167
+    22 R4-P17                    96
+
+1.  Подсчитать ИМТ (индекс массы тела) для всех персонажей.
+
+<!-- -->
+
+    > mutate(starwars, BMI=mass/((height/100)^2)) %>% select(name, height, mass, BMI) %>% print(n = Inf)
+    # A tibble: 87 × 4
+       name                  height   mass   BMI
+       <chr>                  <int>  <dbl> <dbl>
+     1 Luke Skywalker           172   77    26.0
+     2 C-3PO                    167   75    26.9
+     3 R2-D2                     96   32    34.7
+     4 Darth Vader              202  136    33.3
+     5 Leia Organa              150   49    21.8
+     6 Owen Lars                178  120    37.9
+     7 Beru Whitesun Lars       165   75    27.5
+     8 R5-D4                     97   32    34.0
+     9 Biggs Darklighter        183   84    25.1
+    10 Obi-Wan Kenobi           182   77    23.2
+    11 Anakin Skywalker         188   84    23.8
+    12 Wilhuff Tarkin           180   NA    NA  
+    13 Chewbacca                228  112    21.5
+    14 Han Solo                 180   80    24.7
+    15 Greedo                   173   74    24.7
+    16 Jabba Desilijic Tiure    175 1358   443. 
+    17 Wedge Antilles           170   77    26.6
+    18 Jek Tono Porkins         180  110    34.0
+    19 Yoda                      66   17    39.0
+    20 Palpatine                170   75    26.0
+    21 Boba Fett                183   78.2  23.4
+    22 IG-88                    200  140    35  
+    23 Bossk                    190  113    31.3
+    24 Lando Calrissian         177   79    25.2
+    25 Lobot                    175   79    25.8
+    26 Ackbar                   180   83    25.6
+    27 Mon Mothma               150   NA    NA  
+    28 Arvel Crynyd              NA   NA    NA  
+    29 Wicket Systri Warrick     88   20    25.8
+    30 Nien Nunb                160   68    26.6
+    31 Qui-Gon Jinn             193   89    23.9
+    32 Nute Gunray              191   90    24.7
+    33 Finis Valorum            170   NA    NA  
+    34 Padmé Amidala            185   45    13.1
+    35 Jar Jar Binks            196   66    17.2
+    36 Roos Tarpals             224   82    16.3
+    37 Rugor Nass               206   NA    NA  
+    38 Ric Olié                 183   NA    NA  
+    39 Watto                    137   NA    NA  
+    40 Sebulba                  112   40    31.9
+    41 Quarsh Panaka            183   NA    NA  
+    42 Shmi Skywalker           163   NA    NA  
+    43 Darth Maul               175   80    26.1
+    44 Bib Fortuna              180   NA    NA  
+    45 Ayla Secura              178   55    17.4
+    46 Ratts Tyerel              79   15    24.0
+    47 Dud Bolt                  94   45    50.9
+    48 Gasgano                  122   NA    NA  
+    49 Ben Quadinaros           163   65    24.5
+    50 Mace Windu               188   84    23.8
+    51 Ki-Adi-Mundi             198   82    20.9
+    52 Kit Fisto                196   87    22.6
+    53 Eeth Koth                171   NA    NA  
+    54 Adi Gallia               184   50    14.8
+    55 Saesee Tiin              188   NA    NA  
+    56 Yarael Poof              264   NA    NA  
+    57 Plo Koon                 188   80    22.6
+    58 Mas Amedda               196   NA    NA  
+    59 Gregar Typho             185   85    24.8
+    60 Cordé                    157   NA    NA  
+    61 Cliegg Lars              183   NA    NA  
+    62 Poggle the Lesser        183   80    23.9
+    63 Luminara Unduli          170   56.2  19.4
+    64 Barriss Offee            166   50    18.1
+    65 Dormé                    165   NA    NA  
+    66 Dooku                    193   80    21.5
+    67 Bail Prestor Organa      191   NA    NA  
+    68 Jango Fett               183   79    23.6
+    69 Zam Wesell               168   55    19.5
+    70 Dexter Jettster          198  102    26.0
+    71 Lama Su                  229   88    16.8
+    72 Taun We                  213   NA    NA  
+    73 Jocasta Nu               167   NA    NA  
+    74 R4-P17                    96   NA    NA  
+    75 Wat Tambor               193   48    12.9
+    76 San Hill                 191   NA    NA  
+    77 Shaak Ti                 178   57    18.0
+    78 Grievous                 216  159    34.1
+    79 Tarfful                  234  136    24.8
+    80 Raymus Antilles          188   79    22.4
+    81 Sly Moore                178   48    15.1
+    82 Tion Medon               206   80    18.9
+    83 Finn                      NA   NA    NA  
+    84 Rey                       NA   NA    NA  
+    85 Poe Dameron               NA   NA    NA  
+    86 BB8                       NA   NA    NA  
+    87 Captain Phasma            NA   NA    NA  
+
+1.  Найти 10 самых “вытянутых” персонажей. “Вытянутость” оценить по
+    отношению массы (mass) к росту (height) персонажей.
+
+<!-- -->
+
+    > head(mutate(starwars, my_param=mass/height) %>% arrange(my_param) %>% select(name, height, mass, my_param), n = 10)
+    # A tibble: 10 × 4
+       name                  height  mass my_param
+       <chr>                  <int> <dbl>    <dbl>
+     1 Ratts Tyerel              79    15    0.190
+     2 Wicket Systri Warrick     88    20    0.227
+     3 Padmé Amidala            185    45    0.243
+     4 Wat Tambor               193    48    0.249
+     5 Yoda                      66    17    0.258
+     6 Sly Moore                178    48    0.270
+     7 Adi Gallia               184    50    0.272
+     8 Barriss Offee            166    50    0.301
+     9 Ayla Secura              178    55    0.309
+    10 Shaak Ti                 178    57    0.320
+
+1.  Найти средний возраст персонажей каждой расы вселенной Звездных
+    войн.
+
+<!-- -->
+
+    > starwars %>% group_by(species) %>% summarise(Avg_age = median(100+birth_year, na.rm = TRUE)) %>% print(n=Inf)
+    # A tibble: 38 × 2
+       species        Avg_age
+       <chr>            <dbl>
+     1 Aleena              NA
+     2 Besalisk            NA
+     3 Cerean             192
+     4 Chagrian            NA
+     5 Clawdite            NA
+     6 Droid              133
+     7 Dug                 NA
+     8 Ewok               108
+     9 Geonosian           NA
+    10 Gungan             152
+    11 Human              150
+    12 Hutt               700
+    13 Iktotchi            NA
+    14 Kaleesh             NA
+    15 Kaminoan            NA
+    16 Kel Dor            122
+    17 Mirialan           149
+    18 Mon Calamari       141
+    19 Muun                NA
+    20 Nautolan            NA
+    21 Neimodian           NA
+    22 Pau'an              NA
+    23 Quermian            NA
+    24 Rodian             144
+    25 Skakoan             NA
+    26 Sullustan           NA
+    27 Tholothian          NA
+    28 Togruta             NA
+    29 Toong               NA
+    30 Toydarian           NA
+    31 Trandoshan         153
+    32 Twi'lek            148
+    33 Vulptereen          NA
+    34 Wookiee            300
+    35 Xexto               NA
+    36 Yoda's species     996
+    37 Zabrak             154
+    38 NA                  NA
+
+1.  Найти самый распространенный цвет глаз персонажей вселенной Звездных
+    войн.
+
+<!-- -->
+
+    > starwars %>% count(eye_color) %>% filter(n == max(n))
+    # A tibble: 1 × 2
+      eye_color     n
+      <chr>     <int>
+    1 brown        21
+
+1.  Подсчитать среднюю длину имени в каждой расе вселенной Звездных
+    войн.
+
+<!-- -->
+
+    > starwars %>% group_by(species) %>% summarise(Avg_age = median(nchar(name), na.rm = TRUE)) %>% print(n=Inf)
+    # A tibble: 38 × 2
+       species        Avg_age
+       <chr>            <dbl>
+     1 Aleena            12  
+     2 Besalisk          15  
+     3 Cerean            12  
+     4 Chagrian          10  
+     5 Clawdite          10  
+     6 Droid              5  
+     7 Dug                7  
+     8 Ewok              21  
+     9 Geonosian         17  
+    10 Gungan            12  
+    11 Human             11  
+    12 Hutt              21  
+    13 Iktotchi          11  
+    14 Kaleesh            8  
+    15 Kaminoan           7  
+    16 Kel Dor            8  
+    17 Mirialan          14  
+    18 Mon Calamari       6  
+    19 Muun               8  
+    20 Nautolan           9  
+    21 Neimodian         11  
+    22 Pau'an            10  
+    23 Quermian          11  
+    24 Rodian             6  
+    25 Skakoan           10  
+    26 Sullustan          9  
+    27 Tholothian        10  
+    28 Togruta            8  
+    29 Toong             14  
+    30 Toydarian          5  
+    31 Trandoshan         5  
+    32 Twi'lek           11  
+    33 Vulptereen         8  
+    34 Wookiee            8  
+    35 Xexto              7  
+    36 Yoda's species     4  
+    37 Zabrak             9.5
+    38 NA                10.5
+
+## Оценка результата
+
+В результате лабораторной работы мы проанализировали встроенный в пакет
+dplyr набор данных starwars с помощью языка R.
+
+## Вывод
+
+Таким образом, мы развили практические навыки использования языка
+программирования R для обработки данных, закрепили знания базовых типов
+данных языка R, развили практические навыки использования функций
+обработки данных пакета dplyr – функции select(), filter(), mutate(),
+arrange(), group_by().
