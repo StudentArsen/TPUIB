@@ -1,0 +1,239 @@
+---
+title: "Lab4"
+format: md
+---
+
+## Цель работы
+
+1. Зекрепить практические навыки использования языка программирования R для
+обработки данных
+2. Закрепить знания основных функций обработки данных экосистемы tidyverse
+языка R
+3. Закрепить навыки исследования метаданных DNS трафика
+
+## Исходные данные
+
+1. Rstudio Desktop;
+2. Интерпретатор языка R 4.1;
+3. Программный пакет `dplyr` и `knitr`.
+
+Вы исследуете подозрительную сетевую активность во внутренней сети Доброй
+Организации. Вам в руки попали метаданные о DNS трафике в исследуемой сети.
+Исследуйте файлы, восстановите данные, подготовьте их к анализу и дайте
+обоснованные ответы на поставленные вопросы исследования.
+
+## Решение: 
+
+1. Импортируйте данные DNS 
+https://storage.yandexcloud.net/dataset.ctfsec/dns.zip
+
+```
+> list.files("dns")
+[1] "dns.log"
+```
+
+2. Добавьте пропущенные данные о структуре данных (назначении столбцов)
+
+```
+> colnames(dns_raw) <- c("ts", "uid", "id.orig_h", "id.orig_p", "id.resp_h", "id.resp_p", "proto", "trans_id", "rtt", "query", "qclass", "qclass_name", "qtype", "qtype_name", "rcode", "rcode_name", "AA", "TC", "RD", "RA", "Z", "answers", "TTLs", "rejected")
+```
+
+3. Преобразуйте данные в столбцах в нужный формат
+
+```
+> dns <- dns_raw %>%
++     mutate(
++         ts = as_datetime(ts),
++         rtt = as.numeric(rtt),
++         id.orig_p = as.integer(id.orig_p),
++         id.resp_p = as.integer(id.resp_p)
++     )
+```
+
+4. Просмотрите общую структуру данных с помощью функции glimpse()
+
+```
+> glimpse(dns)
+Rows: 427,935
+Columns: 23
+$ ts          <dttm> 2012-03-16 12:30:05, 2012-03-16 12:30:15, 2012-03-16 12:30:15, 2012-03-16 12:30…
+$ uid         <chr> "CWGtK431H9XuaTN4fi", "C36a282Jljz7BsbGH", "C36a282Jljz7BsbGH", "C36a282Jljz7Bsb…
+$ id.orig_h   <chr> "192.168.202.100", "192.168.202.76", "192.168.202.76", "192.168.202.76", "192.16…
+$ id.orig_p   <int> 45658, 137, 137, 137, 137, 137, 137, 137, 137, 137, 137, 137, 137, 45658, 45659,…
+$ id.resp_h   <chr> "192.168.27.203", "192.168.202.255", "192.168.202.255", "192.168.202.255", "192.…
+$ id.resp_p   <int> 137, 137, 137, 137, 137, 137, 137, 137, 137, 137, 137, 137, 137, 5353, 5353, 137…
+$ proto       <chr> "udp", "udp", "udp", "udp", "udp", "udp", "udp", "udp", "udp", "udp", "udp", "ud…
+$ trans_id    <dbl> 33008, 57402, 57402, 57402, 57398, 57398, 57398, 62187, 62187, 62187, 62190, 621…
+$ rtt         <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+$ query       <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", …
+$ qclass      <chr> "C_INTERNET", "C_INTERNET", "C_INTERNET", "C_INTERNET", "C_INTERNET", "C_INTERNE…
+$ qclass_name <chr> "33", "32", "32", "32", "32", "32", "32", "32", "32", "32", "33", "33", "33", "1…
+$ qtype       <chr> "SRV", "NB", "NB", "NB", "NB", "NB", "NB", "NB", "NB", "NB", "SRV", "SRV", "SRV"…
+$ qtype_name  <chr> "0", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "0", …
+$ rcode       <chr> "NOERROR", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-",…
+$ rcode_name  <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FAL…
+$ AA          <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FAL…
+$ TC          <lgl> FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE…
+$ RD          <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FAL…
+$ RA          <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,…
+$ Z           <chr> "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", …
+$ answers     <chr> "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", …
+$ TTLs        <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FAL…
+> 
+```
+
+5. Сколько участников информационного обмена в сети Доброй Организации?
+
+```
+> participants <- dns %>%
++     select(id.orig_h, id.resp_h) %>%
++     pivot_longer(everything()) %>%
++     distinct(value)
+> nrow(participants)
+[1] 1359
+> 
+```
+
+6. Какое соотношение участников обмена внутри сети и участников обращений к внешним ресурсам?
+
+```
+> dns %>%
++     mutate(
++         internal = str_detect(id.orig_h, "^10\\.|^192\\.168\\.")
++     ) %>%
++     count(internal)
+# A tibble: 2 × 2
+  internal      n
+  <lgl>     <int>
+1 FALSE     25651
+2 TRUE     402284
+```
+
+7. Найдите топ-10 участников сети, проявляющих наибольшую сетевую активность.
+
+```
+> dns %>%
++     count(id.orig_h, sort = TRUE) %>%
++     slice(1:10)
+# A tibble: 10 × 2
+   id.orig_h           n
+   <chr>           <int>
+ 1 10.10.117.210   75943
+ 2 192.168.202.93  26522
+ 3 192.168.202.103 18121
+ 4 192.168.202.76  16978
+ 5 192.168.202.97  16176
+ 6 192.168.202.141 14967
+ 7 10.10.117.209   14222
+ 8 192.168.202.110 13372
+ 9 192.168.203.63  12148
+10 192.168.202.106 10784
+```
+
+8. Найдите топ-10 доменов, к которым обращаются пользователи сети и соответственное количество обращений
+
+```
+> top_domains <- dns %>%
++     filter(!is.na(query)) %>%
++     count(query, sort = TRUE) %>%
++     slice(1:10)
+> 
+> top_domains
+# A tibble: 4 × 2
+  query      n
+  <chr>  <int>
+1 1     422339
+2 -       3648
+3 3       1016
+4 32769    932
+```
+
+9. Опеределите базовые статистические характеристики (функция summary()) интервала времени между последовательными обращениями к топ-10 доменам.
+
+```
+> dns %>%
++     filter(query %in% top_domains$query) %>%
++     arrange(query, ts) %>%
++     group_by(query) %>%
++     mutate(delta = ts - lag(ts)) %>%
++     summarise(
++         min = min(delta, na.rm = TRUE),
++         median = median(delta, na.rm = TRUE),
++         mean = mean(delta, na.rm = TRUE),
++         max = max(delta, na.rm = TRUE)
++     )
+# A tibble: 4 × 5
+  query min    median          mean             max          
+  <chr> <drtn> <drtn>          <drtn>           <drtn>       
+1 -     0 secs 0.99000001 secs  31.9997752 secs 49786.85 secs
+2 1     0 secs 0.00999999 secs   0.2769972 secs 49669.28 secs
+3 3     0 secs 0.01999998 secs 106.0914778 secs 58362.95 secs
+4 32769 0 secs 1.11999893 secs 119.1834372 secs 52833.48 secs
+```
+
+10. Часто вредоносное программное обеспечение использует DNS канал в качестве канала управления, периодически отправляя запросы на подконтрольный злоумышленникам DNS сервер. По периодическим запросам на один и тот же домен можно выявить скрытый DNS канал. Есть ли такие IP адреса в исследуемом датасете?
+
+```
+> dns %>%
++     filter(query %in% top_domains$query) %>%
++     arrange(id.orig_h, query, ts) %>%
++     group_by(id.orig_h, query) %>%
++     mutate(delta = as.numeric(ts - lag(ts))) %>%
++     summarise(
++         sd_delta = sd(delta, na.rm = TRUE),
++         n = n()
++     ) %>%
++     filter(sd_delta < 1, n > 10)
+`summarise()` has grouped output by 'id.orig_h'. You can override using the `.groups` argument.
+# A tibble: 8 × 4
+# Groups:   id.orig_h [8]
+  id.orig_h                            query sd_delta     n
+  <chr>                                <chr>    <dbl> <int>
+1 169.254.228.26                       1        0.207    24
+2 192.168.202.128                      1        0.916    94
+3 192.168.202.146                      1        0.294    28
+4 192.168.202.157                      1        0.459  1491
+5 192.168.95.166                       1        0.240    18
+6 2001:dbb:c18:202:6128:bec8:28c6:8c7b 1        0.950    24
+7 2001:dbb:c18:202:d4bc:e39f:84ad:5001 1        0.382    63
+8 2001:dbb:c18:202:d557:eac5:3728:41ee 1        0.892    18
+```
+
+11. Определите местоположение (страну, город) и организацию-провайдера для топ-10 доменов. Для
+этого можно использовать сторонние сервисы, например http://ip-api.com (API-эндпоинт http://ip-api.com/json)
+
+```
+> get_ip_info <- function(ip) {
++     fromJSON(paste0("http://ip-api.com/json/", ip))
++ }
+> 
+> domain_ips <- dns %>%
++     filter(query %in% top_domains$query) %>%
++     distinct(query, id.resp_h) %>%
++     slice(1:10)
+> 
+> ip_info <- map_df(domain_ips$id.resp_h, get_ip_info)
+> 
+> ip_info %>%
++     select(query = org, country, city, isp)
+# A tibble: 10 × 4
+   query          country         city       isp                        
+   <chr>          <chr>           <chr>      <chr>                      
+ 1  NA             NA              NA         NA                        
+ 2  NA             NA              NA         NA                        
+ 3  NA             NA              NA         NA                        
+ 4  NA             NA              NA         NA                        
+ 5  NA             NA              NA         NA                        
+ 6  NA             NA              NA         NA                        
+ 7 "Vercara, LLC" "United States" "New York" "Neustar Security Services"
+ 8 "DNS.com, LLC" "United States" "Clifton"  "Flexential Corp"          
+ 9 ""             ""              ""         ""                         
+10  NA             NA              NA         NA  
+```
+## Оценка результата
+
+ В результате лабораторной работы мы закрепили знания основных функций обработки данных экосистемы tidyverse языка R и исследования метаданных DNS трафика
+
+## Вывод
+
+Таким образом, мы закрепили знания основных функций обработки данных экосистемы tidyverse языка R и исследования метаданных DNS трафика.
