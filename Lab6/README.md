@@ -1,0 +1,201 @@
+# Lab6
+
+
+### Подготовка данных
+
+1.  Импортируйте данные в R. Это можно выполнить с помощью
+    jsonlite::stream_in(file()). Датасет находится по адресу
+    https://storage.yandexcloud.net/iamcth-data/dataset.tar.gz
+
+<!-- -->
+
+    > library(tidyverse)
+    > library(jsonlite)
+    > 
+    > url <- "https://storage.yandexcloud.net/iamcth-data/dataset.tar.gz"
+    > 
+    > tmp <- tempfile()
+    > download.file(url, tmp)
+    пробую URL 'https://storage.yandexcloud.net/iamcth-data/dataset.tar.gz'
+    Content type 'application/gzip' length 12608123 bytes (12.0 MB)
+    downloaded 12.0 MB
+
+    > 
+    > untar(tmp, exdir = "data")
+    > 
+    > winlog_raw <- stream_in(file("data/caldera_attack_evals_round1_day1_2019-10-20201108.json"))
+
+1.  Привести датасеты в вид “аккуратных данных”, преобразовать типы
+    столбцов в соответствии с типом данных
+
+<!-- -->
+
+    > winlog_flat <- winlog_raw %>%
+    +     unnest(`@metadata`, names_sep = "_") %>%
+    +     unnest(event, names_sep = "_") %>%
+    +     unnest(log, names_sep = "_") %>%
+    +     unnest(winlog, names_sep = "_") %>%
+    +     unnest(ecs, names_sep = "_") %>%
+    +     unnest(host, names_sep = "_") %>%
+    +     unnest(agent, names_sep = "_")
+    > 
+    > winlog <- winlog_flat %>%
+    +     mutate(
+    +         `@timestamp` = as.POSIXct(
+    +             `@timestamp`,
+    +             format = "%Y-%m-%dT%H:%M:%OSZ",
+    +             tz = "UTC"
+    +         ),
+    +         winlog_event_id = as.integer(winlog_event_id),
+    +         log_level = as.character(log_level)
+    +     )
+    > 
+    > glimpse(winlog)
+
+3.Просмотрите общую структуру данных с помощью функции glimpse()
+
+    > glimpse(winlog)
+    Rows: 101,904
+    Columns: 34
+    $ `@timestamp`         <dttm> 2019-10-20 20:11:06, 2019-10-20 20:11:07, 2019-10-20 20:11:09, 2019-10…
+    $ `@metadata_beat`     <chr> "winlogbeat", "winlogbeat", "winlogbeat", "winlogbeat", "winlogbeat", "…
+    $ `@metadata_type`     <chr> "_doc", "_doc", "_doc", "_doc", "_doc", "_doc", "_doc", "_doc", "_doc",…
+    $ `@metadata_version`  <chr> "7.4.0", "7.4.0", "7.4.0", "7.4.0", "7.4.0", "7.4.0", "7.4.0", "7.4.0",…
+    $ `@metadata_topic`    <chr> "winlogbeat", "winlogbeat", "winlogbeat", "winlogbeat", "winlogbeat", "…
+    $ event_created        <chr> "2019-10-20T20:11:09.988Z", "2019-10-20T20:11:09.988Z", "2019-10-20T20:…
+    $ event_kind           <chr> "event", "event", "event", "event", "event", "event", "event", "event",…
+    $ event_code           <int> 4703, 4673, 10, 10, 10, 10, 11, 10, 10, 10, 10, 7, 7, 7, 4689, 10, 5, 4…
+    $ event_action         <chr> "Token Right Adjusted Events", "Sensitive Privilege Use", "Process acce…
+    $ log_level            <chr> "information", "information", "information", "information", "informatio…
+    $ message              <chr> "A token right was adjusted.\n\nSubject:\n\tSecurity ID:\t\tS-1-5-18\n\…
+    $ winlog_event_data    <df[,234]> <data.frame[34 x 234]>
+    $ winlog_event_id      <int> 4703, 4673, 10, 10, 10, 10, 11, 10, 10, 10, 10, 7, 7, 7, 4689, 10,…
+    $ winlog_provider_name <chr> "Microsoft-Windows-Security-Auditing", "Microsoft-Windows-Security-Audi…
+    $ winlog_api           <chr> "wineventlog", "wineventlog", "wineventlog", "wineventlog", "wineventlo…
+    $ winlog_record_id     <int> 50588, 104875, 226649, 153525, 163488, 153526, 134651, 226650, 226651, …
+    $ winlog_computer_name <chr> "HR001.shire.com", "HFDC01.shire.com", "IT001.shire.com", "HR001.shire.…
+    $ winlog_process       <df[,2]> <data.frame[34 x 2]>
+    $ winlog_keywords      <list> "Audit Success", "Audit Failure", <NULL>, <NULL>, <NULL>, <NULL>, <NULL…
+    $ winlog_provider_guid <chr> "{54849625-5478-4994-a5ba-3e3b0328c30d}", "{54849625-5478-4994-a5ba-…
+    $ winlog_channel       <chr> "security", "Security", "Microsoft-Windows-Sysmon/Operational", "Micro…
+    $ winlog_task          <chr> "Token Right Adjusted Events", "Sensitive Privilege Use", "Process acce…
+    $ winlog_opcode        <chr> "Info", "Info", "Info", "Info", "Info", "Info", "Info", "Info", "Info",…
+    $ winlog_version       <int> NA, NA, 3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, NA, 3, 3, NA, 3, 3, 3, 3, N…
+    $ winlog_user          <df[,4]> <data.frame[34 x 4]>
+    $ winlog_activity_id   <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+    $ winlog_user_data     <df[,30]> <data.frame[34 x 30]>
+    $ ecs_version          <chr> "1.1.0", "1.1.0", "1.1.0", "1.1.0", "1.1.0", "1.1.0", "1.1.0", "1.1.0",…
+    $ host_name            <chr> "WECServer", "WECServer", "WECServer", "WECServer", "WECServer", "WE…
+    $ agent_ephemeral_id   <chr> "b372be1f-ba0a-4d7e-b4df-79eac86e1fde", "b372be1f-ba0a-4d7e-b4df-79eac8…
+    $ agent_hostname       <chr> "WECServer", "WECServer", "WECServer", "WECServer", "WECServer", "W…
+    $ agent_id             <chr> "d347d9a4-bff4-476c-b5a4-d51119f78250", "d347d9a4-bff4-476c-b5a4-d51119…
+    $ agent_version        <chr> "7.4.0", "7.4.0", "7.4.0", "7.4.0", "7.4.0", "7.4.0", "7.4.0", "7.4.0",…
+    $ agent_type           <chr> "winlogbeat", "winlogbeat", "winlogbeat", "winlogbeat", "winlogbeat", "…
+    > 
+    > 
+
+### Анализ
+
+1.  Раскройте датафрейм избавившись от вложенных датафреймов. Для
+    обнаружения таких можно использовать функцию dplyr::glimpse(), а для
+    раскрытия вложенности – tidyr::unnest(). Обратите внимание, что при
+    раскрытии теряются внешние названия колонок – это можно
+    предотвратить если использовать параметр tidyr::unnest(…, names_sep
+    = ).
+
+<!-- -->
+
+    > winlog_flat <- winlog %>%
+    +     unnest(
+    +         cols = where(is.list),
+    +         names_sep = "_"
+    +     )
+    > 
+
+1.  Минимизируйте количество колонок в датафрейме – уберите колоки с
+    единственным значением параметра
+
+<!-- -->
+
+    > winlog_min <- winlog_flat %>%
+    +     select(where(~ n_distinct(.) > 1))
+    > 
+
+1.  Какое количество хостов представлено в данном датасете?
+
+<!-- -->
+
+    > winlog_min %>%
+    +     distinct(winlog_computer_name) %>%
+    +     nrow()
+    [1] 5
+    > 
+
+1.  Подготовьте датафрейм с расшифровкой Windows Event_ID, приведите
+    типы данных к типу их значений.
+
+<!-- -->
+
+    > events_tbl <- events_raw %>%
+    +     rename(
+    +         EventID = `Current Windows Event ID`,
+    +         Level = `Potential Criticality`,
+    +         Description = `Event Summary`
+    +     ) %>%
+    +     mutate(
+    +         EventID = as.integer(EventID),
+    +         Level = as.character(Level),
+    +         Description = as.character(Description)
+    +     )
+    > glimpse(events_tbl)
+    Rows: 381
+    Columns: 4
+    $ EventID                   <int> 4618, 4649, 4719, 4765, 4766, 4794, 4897, 4964, 5124, NA, 1102, 46…
+    $ `Legacy Windows Event ID` <chr> "N/A", "N/A", "612", "N/A", "N/A", "N/A", "801", "N/A", "N/A", "55…
+    $ Level                     <chr> "High", "High", "High", "High", "High", "High", "High", "High", "H…
+    $ Description               <chr> "A monitored security event pattern has occurred.", "A replay atta…
+    > 
+
+1.  Есть ли в логе события с высоким и средним уровнем значимости?
+    Сколько их?
+
+<!-- -->
+
+    > error_events <- winlog %>%
+    +     filter(log_level == "error")
+    > 
+    > warn_events <- winlog %>%
+    +     filter(log_level == "warning")
+    > 
+    > error_count <- nrow(error_events)
+    > warn_count  <- nrow(warn_events)
+    > 
+    > sprintf(
+    +     "1. Количество событий высокого уровня значимости: %d",
+    +     error_count
+    + )
+    [1] "1. Количество событий высокого уровня значимости: 4"
+    > 
+    > sprintf(
+    +     "2. Количество событий среднего уровня значимости: %d",
+    +     warn_count
+    + )
+    [1] "2. Количество событий среднего уровня значимости: 222"
+    > 
+    > sprintf(
+    +     "1+2: %d",
+    +     error_count + warn_count
+    + )
+    [1] "1+2: 226"
+    > 
+    > 
+
+## Оценка результата
+
+В результате лабораторной работы мы научились анализировать события ОС
+Windows
+
+## Вывод
+
+Таким образом, мы научились работать с определенными функциями и
+библиотеками языка R для анализа дампов событий ОС Windows
