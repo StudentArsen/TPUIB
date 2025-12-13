@@ -1,0 +1,653 @@
+---
+title: "Lab5"
+format: md
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+### Подготовка данных
+
+1.  Импортируйте данные
+
+```         
+> library(tidyverse)
+> library(lubridate)
+> library(stringr)
+> 
+> url <- "https://storage.yandexcloud.net/dataset.ctfsec/P2_wifi_data.csv"
+> 
+> raw_data <- read_csv(
++     url,
++     skip = 1,
++     col_names = FALSE,
++     show_col_types = FALSE
++ )
+```
+
+2.  Привести датасеты в вид “аккуратных данных”, преобразовать типы
+    столбцов в соответствии с типом данных
+
+```         
+> client_start_line <- which(raw_data$X1 == "Station MAC")
+> 
+> ap_raw <- raw_data[2:(client_start_line[1] - 1), ]
+> client_raw <- raw_data[client_start_line[1]:nrow(raw_data), ]
+> 
+> ap_raw <- ap_raw[rowSums(is.na(ap_raw)) != ncol(ap_raw), ]
+> client_raw <- client_raw[rowSums(is.na(client_raw)) != ncol(client_raw), ]
+> 
+> client_raw <- client_raw[, 1:7]
+> 
+> ap_col_names <- c(
++     "BSSID", "First_time_seen", "Last_time_seen", "channel",
++     "Speed", "Privacy", "Cipher", "Authentication", "Power",
++     "beacons", "IV", "LAN_IP", "ID_length", "ESSID", "Key"
++ )
+> 
+> client_col_names <- c(
++     "Station_MAC", "First_time_seen", "Last_time_seen",
++     "Power", "packets", "BSSID", "Probed_ESSIDs"
++ )
+> 
+> names(ap_raw) <- ap_col_names[1:ncol(ap_raw)]
+> names(client_raw) <- client_col_names[1:ncol(client_raw)]
+> 
+> ap_data <- ap_raw %>%
++     filter(!is.na(BSSID), BSSID != "", !is.na(ESSID), ESSID != "") %>%
++     mutate(
++         First_time_seen = as.POSIXct(First_time_seen),
++         Last_time_seen  = as.POSIXct(Last_time_seen),
++         channel = as.numeric(channel),
++         Speed   = as.numeric(Speed),
++         Power   = as.numeric(Power),
++         beacons = as.numeric(beacons)
++     )
+> 
+> client_data <- client_raw[-1, ] %>%
++     filter(!is.na(Station_MAC), Station_MAC != "") %>%
++     mutate(
++         First_time_seen = as.POSIXct(First_time_seen),
++         Last_time_seen  = as.POSIXct(Last_time_seen),
++         Power   = as.numeric(Power),
++         packets = as.numeric(packets)
++     )
+> 
+```
+
+3.  Просмотрите общую структуру данных с помощью функции glimpse()
+
+```         
+> glimpse(ap_data)
+Rows: 96
+Columns: 15
+$ BSSID           <chr> "BE:F1:71:D5:17:8B", "6E:C7:EC:16:DA:1A", "9A:75:A8:B9:04:1E", "4A:EC:1E:DB:…
+$ First_time_seen <dttm> 2023-07-28 09:13:03, 2023-07-28 09:13:03, 2023-07-28 09:13:03, 2023-07-28 0…
+$ Last_time_seen  <dttm> 2023-07-28 11:50:50, 2023-07-28 11:55:12, 2023-07-28 11:53:31, 2023-07-28 1…
+$ channel         <dbl> 1, 1, 1, 7, 6, 11, 11, 11, 1, 6, 11, 11, 6, 6, 1, 1, 11, 6, 1, 11, 1, 11, 11…
+$ Speed           <dbl> 195, 130, 360, 360, 130, 195, 130, 130, 195, 180, 130, 130, 130, 65, 54, 54,…
+$ Privacy         <chr> "WPA2", "WPA2", "WPA2", "WPA2", "OPN", "WPA2", "WPA2", "WPA2", "WPA2", "WPA2…
+$ Cipher          <chr> "CCMP", "CCMP", "CCMP", "CCMP", NA, "CCMP", "CCMP", "CCMP", "CCMP", "CCMP", …
+$ Authentication  <chr> "PSK", "PSK", "PSK", "PSK", NA, "PSK", "PSK", "PSK", "PSK", "PSK", "PSK", "P…
+$ Power           <dbl> -30, -30, -68, -37, -63, -27, -38, -38, -66, -42, -73, -69, -63, -51, -65, -…
+$ beacons         <dbl> 846, 750, 694, 510, 251, 1647, 1251, 704, 617, 1390, 28, 112, 260, 248, 84, …
+$ IV              <chr> "504", "116", "26", "21", "3430", "80", "11", "0", "0", "86", "0", "0", "907…
+$ LAN_IP          <chr> "0.  0.  0.  0", "0.  0.  0.  0", "0.  0.  0.  0", "0.  0.  0.  0", "172. 17…
+$ ID_length       <chr> "12", "4", "2", "14", "13", "12", "13", "24", "12", "10", "24", "24", "12", …
+$ ESSID           <chr> "C322U13 3965", "Cnet", "KC", "POCO X5 Pro 5G", "MIREA_HOTSPOT", "C322U21 05…
+$ Key             <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+> glimpse(client_data)
+Rows: 12,081
+Columns: 7
+$ Station_MAC     <chr> "CA:66:3B:8F:56:DD", "96:35:2D:3D:85:E6", "5C:3A:45:9E:1A:7B", "C0:E4:34:D8:…
+$ First_time_seen <dttm> 2023-07-28 09:13:03, 2023-07-28 09:13:03, 2023-07-28 09:13:03, 2023-07-28 0…
+$ Last_time_seen  <dttm> 2023-07-28 10:59:44, 2023-07-28 09:13:03, 2023-07-28 11:51:54, 2023-07-28 1…
+$ Power           <dbl> -33, -65, -39, -61, -53, -43, -31, -71, -74, -65, -45, -65, -49, -1, -67, -3…
+$ packets         <dbl> 858, 4, 432, 958, 1, 344, 163, 3, 115, 437, 265, 77, 7, 71, 1, 125, 2245, 40…
+$ BSSID           <chr> "BE:F1:71:D5:17:8B", "(not associated)", "BE:F1:71:D6:10:D7", "BE:F1:71:D5:1…
+$ Probed_ESSIDs   <chr> "C322U13 3965", "IT2 Wireless", "C322U21 0566", "C322U13 3965", NA, NA, "C32…
+> 
+```
+
+### Анализ
+
+### Точки доступа
+
+1.  Определить небезопасные точки доступа (без шифрования – OPN)
+
+```         
+> ap_data %>%
++     filter(Privacy == "OPN") %>%
++     select(BSSID, ESSID, channel, Power) %>% print(n=Inf)
+# A tibble: 23 × 4
+   BSSID             ESSID         channel Power
+   <chr>             <chr>           <dbl> <dbl>
+ 1 E8:28:C1:DC:B2:52 MIREA_HOTSPOT       6   -63
+ 2 E8:28:C1:DC:B2:50 MIREA_GUESTS        6   -63
+ 3 E8:28:C1:DD:04:52 MIREA_HOTSPOT      11   -67
+ 4 E8:28:C1:DE:74:32 MIREA_HOTSPOT       6   -69
+ 5 E8:28:C1:DC:C8:32 MIREA_HOTSPOT       1   -69
+ 6 E8:28:C1:DD:04:50 MIREA_GUESTS       11   -78
+ 7 E8:28:C1:DC:C8:30 MIREA_GUESTS        1   -71
+ 8 E8:28:C1:DC:B2:41 MIREA_GUESTS       48   -89
+ 9 E8:28:C1:DC:B2:40 MIREA_HOTSPOT      48   -88
+10 E8:28:C1:DD:04:40 MIREA_HOTSPOT      52   -84
+11 E8:28:C1:DD:04:41 MIREA_GUESTS       52   -83
+12 E8:28:C1:DE:47:D2 MIREA_HOTSPOT       1   -71
+13 02:BC:15:7E:D5:DC MT_FREE            11   -67
+14 E8:28:C1:DC:C6:B0 MIREA_GUESTS        6   -71
+15 E8:28:C1:DC:BD:50 MIREA_GUESTS       11   -75
+16 00:03:7A:1A:03:56 MT_FREE            11   -68
+17 00:03:7F:12:34:56 MT_FREE             6   -76
+18 00:3E:1A:5D:14:45 MT_FREE            11   -57
+19 E8:28:C1:DC:BD:52 MIREA_HOTSPOT      11   -72
+20 02:67:F1:B0:6C:98 MT_FREE            11   -68
+21 02:CF:8B:87:B4:F9 MT_FREE            11   -70
+22 00:53:7A:99:98:56 MT_FREE            11   -68
+23 E8:28:C1:DE:47:D0 MIREA_GUESTS        1   -70
+```
+
+2.  Определить производителя для каждого обнаруженного устройства
+
+```         
+> ap_data %>%
++     mutate(
++         Vendor = str_sub(BSSID, 1, 8)
++     ) %>%
++     distinct(Vendor) %>% print(n=Inf)
+# A tibble: 64 × 1
+   Vendor  
+   <chr>   
+ 1 BE:F1:71
+ 2 6E:C7:EC
+ 3 9A:75:A8
+ 4 4A:EC:1E
+ 5 E8:28:C1
+ 6 0A:C5:E1
+ 7 38:1A:52
+ 8 1E:93:E3
+ 9 8E:55:4A
+10 00:26:99
+11 00:23:EB
+12 C6:BC:37
+13 56:C5:2B
+14 9A:9F:06
+15 12:51:07
+16 76:E4:ED
+17 00:26:CB
+18 2A:E8:A2
+19 AA:F4:3F
+20 56:99:98
+21 02:BC:15
+22 10:50:72
+23 14:EB:B6
+24 C2:B5:D7
+25 8A:4E:75
+26 5E:C7:C0
+27 A2:FE:FF
+28 76:70:AF
+29 D2:25:91
+30 CE:48:E7
+31 8E:1F:94
+32 BE:FD:EF
+33 7E:3A:10
+34 3A:DA:00
+35 F2:30:AB
+36 A2:64:E8
+37 EA:D8:D1
+38 BA:2A:7A
+39 12:54:1A
+40 CE:C3:F7
+41 00:03:7A
+42 DC:09:4C
+43 76:5E:F3
+44 00:03:7F
+45 1E:C2:8E
+46 4A:86:77
+47 00:3E:1A
+48 0A:24:D8
+49 A6:02:B9
+50 B2:CF:C0
+51 92:F5:7B
+52 8A:A3:03
+53 AE:3E:7F
+54 02:B3:45
+55 B6:C4:55
+56 86:DF:BF
+57 02:67:F1
+58 EA:7B:9B
+59 2E:FE:13
+60 3A:70:96
+61 02:CF:8B
+62 36:46:53
+63 00:53:7A
+64 9C:A5:13
+> 
+```
+
+3.  Выявить устройства, использующие последнюю версию протокола
+    шифрования WPA3, и названия точек доступа, реализованных на этих
+    устройствах
+
+```         
+> ap_data %>%
++     filter(str_detect(Privacy, "WPA3")) %>%
++     select(BSSID, ESSID, Privacy)
+# A tibble: 5 × 3
+  BSSID             ESSID                                          Privacy  
+  <chr>             <chr>                                          <chr>    
+1 A2:FE:FF:B8:9B:C9 "Christie’s"                                   WPA3 WPA2
+2 CE:48:E7:86:4E:33 "iPhone (Анастасия)"                           WPA3 WPA2
+3 8E:1F:94:96:DA:FD "iPhone (Анастасия)"                           WPA3 WPA2
+4 BE:FD:EF:18:92:44 "Димасик"                                      WPA3 WPA2
+5 3A:DA:00:F9:0C:02 "iPhone XS Max \U0001f98a\U0001f431\U0001f98a" WPA3 WPA2
+> 
+> 
+```
+
+4.  Отсортировать точки доступа по интервалу времени, в течение которого
+    они находились на связи, по убыванию.
+
+```         
+> ap_data %>%
++     mutate(
++         active_time = difftime(Last_time_seen, First_time_seen, units = "secs")
++     ) %>%
++     arrange(desc(active_time)) %>%
++     select(BSSID, ESSID, active_time) %>% print(n=Inf)
+# A tibble: 96 × 3
+   BSSID             ESSID                                          active_time
+   <chr>             <chr>                                          <drtn>     
+ 1 E8:28:C1:DD:04:52 "MIREA_HOTSPOT"                                9776 secs  
+ 2 E8:28:C1:DC:B2:52 "MIREA_HOTSPOT"                                9755 secs  
+ 3 6E:C7:EC:16:DA:1A "Cnet"                                         9729 secs  
+ 4 E8:28:C1:DC:B2:50 "MIREA_GUESTS"                                 9726 secs  
+ 5 8E:55:4A:85:5B:01 "Vladimir"                                     9723 secs  
+ 6 00:26:99:BA:75:80 "GIVC"                                         9710 secs  
+ 7 00:26:99:F2:7A:E2 "GIVC"                                         9707 secs  
+ 8 1E:93:E3:1B:3C:F4 "Galaxy A71"                                   9633 secs  
+ 9 9A:75:A8:B9:04:1E "KC"                                           9628 secs  
+10 00:23:EB:E3:81:F2 "GIVC"                                         9595 secs  
+11 E8:28:C1:DC:C8:32 "MIREA_HOTSPOT"                                9555 secs  
+12 00:26:99:F2:7A:E1 "IKB"                                          9492 secs  
+13 BE:F1:71:D5:17:8B "C322U13 3965"                                 9467 secs  
+14 BE:F1:71:D6:10:D7 "C322U21 0566"                                 9461 secs  
+15 E8:28:C1:DD:04:40 "MIREA_HOTSPOT"                                9400 secs  
+16 E8:28:C1:DD:04:41 "MIREA_GUESTS"                                 9400 secs  
+17 00:23:EB:E3:81:F1 "IKB"                                          9348 secs  
+18 00:23:EB:E3:81:FE "IKB"                                          9305 secs  
+19 00:23:EB:E3:81:FD "GIVC"                                         9305 secs  
+20 E8:28:C1:DC:B2:40 "MIREA_HOTSPOT"                                9212 secs  
+21 AA:F4:3F:EE:49:0B "Redmi Note 8 Pro"                             9045 secs  
+22 E8:28:C1:DE:47:D2 "MIREA_HOTSPOT"                                9041 secs  
+23 E8:28:C1:DD:04:50 "MIREA_GUESTS"                                 8989 secs  
+24 14:EB:B6:6A:76:37 "Gnezdo_lounge 2"                              8915 secs  
+25 56:99:98:EE:5A:4E "tementy-phone"                                8811 secs  
+26 38:1A:52:0D:90:A1 "EBFCD597-EE81fI_DMN1AOe1"                     8661 secs  
+27 0A:C5:E1:DB:17:7B "AndroidAP177B"                                8608 secs  
+28 E8:28:C1:DC:C8:30 "MIREA_GUESTS"                                 8445 secs  
+29 E8:28:C1:DC:B2:41 "MIREA_GUESTS"                                 8307 secs  
+30 12:51:07:FF:29:D6 "DESKTOP-KITJO8R 5262"                         7483 secs  
+31 4A:EC:1E:DB:BF:95 "POCO X5 Pro 5G"                               6658 secs  
+32 E8:28:C1:DE:74:32 "MIREA_HOTSPOT"                                5190 secs  
+33 10:50:72:00:11:08 "MGTS_GPON_B563"                               4997 secs  
+34 EA:D8:D1:77:C8:08 "DIRECT-08-HP M428fdw LJ"                      4995 secs  
+35 7E:3A:10:A7:59:4E "vivo Y21"                                     4611 secs  
+36 BE:F1:71:D5:0E:53 "C322U06 9080"                                 4578 secs  
+37 A6:02:B9:73:83:18 "C239U52 6706"                                 4577 secs  
+38 9A:9F:06:44:24:5B "Long Huong Galaxy M12"                        4572 secs  
+39 92:F5:7B:43:0B:69 "Redmi 12"                                     4392 secs  
+40 38:1A:52:0D:84:D7 "EBFCD57F-EE81fI_DL_1AO2T"                     4319 secs  
+41 38:1A:52:0D:90:5D "EBFCD615-EE81fI_DOL1AO8w"                     4255 secs  
+42 A2:64:E8:97:58:EE "Mi Phone"                                     4252 secs  
+43 A6:02:B9:73:81:47 "C239U53 6056"                                 4224 secs  
+44 56:C5:2B:9F:84:90 "OnePlus 6T"                                   4173 secs  
+45 A6:02:B9:73:2F:76 "C239U51 0701"                                 4144 secs  
+46 38:1A:52:0D:97:60 "EBFCD593-EE81fI_DMJ1AOI4"                     4086 secs  
+47 0A:24:D8:D9:24:70 "IgorKotya"                                    4071 secs  
+48 E8:28:C1:DC:C6:B0 "MIREA_GUESTS"                                 3879 secs  
+49 8A:A3:03:73:52:08 "Galaxy A30s5208"                              3451 secs  
+50 5E:C7:C0:E4:D7:D4 "realme 10"                                    3265 secs  
+51 4A:86:77:04:B7:28 "iPhone (Искандер)"                            3008 secs  
+52 B6:C4:55:B5:53:24 "Redmi 9"                                      2987 secs  
+53 E8:28:C1:DC:BD:50 "MIREA_GUESTS"                                 2743 secs  
+54 76:70:AF:A4:D2:AF "витя"                                         2733 secs  
+55 86:DF:BF:E4:2F:23 "DESKTOP-Q7R0KRV 2433"                         2688 secs  
+56 38:1A:52:0D:8F:EC "EBFCD6C2-EE81fI_DR21AOa0"                     2635 secs  
+57 EA:7B:9B:D8:56:34 "POCO C40"                                     2241 secs  
+58 38:1A:52:0D:85:1D "EBFCD5C1-EE81fI_DN11AOcY"                     2082 secs  
+59 00:26:CB:AA:62:71 "IKB"                                          1969 secs  
+60 3A:70:96:C6:30:2C "iPhone (Искандер)"                            1300 secs  
+61 36:46:53:81:12:A0 "GGWPRedmi Note 10S"                           1248 secs  
+62 CE:C3:F7:A4:7E:B3 "DIRECT-A6-HP"                                 1224 secs  
+63 E8:28:C1:DB:F5:F0 "MIREA_GUESTS"                                  842 secs  
+64 02:67:F1:B0:6C:98 "MT_FREE"                                       651 secs  
+65 1E:C2:8E:D8:30:91 "Damy"                                          498 secs  
+66 8E:1F:94:96:DA:FD "iPhone (Анастасия)"                            415 secs  
+67 CE:48:E7:86:4E:33 "iPhone (Анастасия)"                            295 secs  
+68 2A:E8:A2:02:01:73 "Redmi Note 9S"                                 220 secs  
+69 2E:FE:13:D0:96:51 "Redmi Note 8 Pro"                               58 secs  
+70 9C:A5:13:28:D5:89 "Galaxy M012063"                                 43 secs  
+71 D2:25:91:F6:6C:D8 "Саня"                                           13 secs  
+72 3A:DA:00:F9:0C:02 "iPhone XS Max \U0001f98a\U0001f431\U0001f98a"    9 secs  
+73 DC:09:4C:32:34:9B "kak_vashi_dela"                                  8 secs  
+74 F2:30:AB:E9:03:ED "iPhone (Uliana)"                                 7 secs  
+75 00:03:7A:1A:03:56 "MT_FREE"                                         6 secs  
+76 B2:CF:C0:00:4A:60 "Михаил's Galaxy M32"                             5 secs  
+77 BE:FD:EF:18:92:44 "Димасик"                                         4 secs  
+78 02:BC:15:7E:D5:DC "MT_FREE"                                         2 secs  
+79 00:3E:1A:5D:14:45 "MT_FREE"                                         2 secs  
+80 C6:BC:37:7A:67:0D "Mura's Galaxy A52"                               0 secs  
+81 76:E4:ED:B0:5C:9A "Инет от Путина"                                  0 secs  
+82 C2:B5:D7:7F:07:A8 "DIRECT-a8-HP M227f LaserJet"                     0 secs  
+83 8A:4E:75:44:5A:F6 "quiksmobile"                                     0 secs  
+84 A2:FE:FF:B8:9B:C9 "Christie’s"                                      0 secs  
+85 BA:2A:7A:DD:38:3E "Айфон (Oleg)"                                    0 secs  
+86 12:54:1A:C6:FF:71 "Amuler"                                          0 secs  
+87 76:5E:F3:F9:A5:1C "Redmi 9C NFC"                                    0 secs  
+88 00:03:7F:12:34:56 "MT_FREE"                                         0 secs  
+89 E8:28:C1:DC:BD:52 "MIREA_HOTSPOT"                                   0 secs  
+90 00:26:99:F1:1A:E1 "IKB"                                             0 secs  
+91 00:26:CB:AA:62:72 "GIVC"                                            0 secs  
+92 AE:3E:7F:C8:BC:8E "Igorek✨"                                        0 secs  
+93 02:B3:45:5A:05:93 "HONOR 30"                                        0 secs  
+94 02:CF:8B:87:B4:F9 "MT_FREE"                                         0 secs  
+95 00:53:7A:99:98:56 "MT_FREE"                                         0 secs  
+96 E8:28:C1:DE:47:D0 "MIREA_GUESTS"                                    0 secs 
+```
+
+5.  Обнаружить топ-10 самых быстрых точек доступа.
+
+```         
+> ap_data %>%
++     arrange(desc(Speed)) %>%
++     select(BSSID, ESSID, Speed) %>%
++     slice_head(n = 10)
+# A tibble: 10 × 3
+   BSSID             ESSID              Speed
+   <chr>             <chr>              <dbl>
+ 1 CE:48:E7:86:4E:33 iPhone (Анастасия)   866
+ 2 8E:1F:94:96:DA:FD iPhone (Анастасия)   866
+ 3 9A:75:A8:B9:04:1E KC                   360
+ 4 4A:EC:1E:DB:BF:95 POCO X5 Pro 5G       360
+ 5 56:C5:2B:9F:84:90 OnePlus 6T           360
+ 6 E8:28:C1:DC:B2:41 MIREA_GUESTS         360
+ 7 E8:28:C1:DC:B2:40 MIREA_HOTSPOT        360
+ 8 E8:28:C1:DD:04:40 MIREA_HOTSPOT        360
+ 9 E8:28:C1:DD:04:41 MIREA_GUESTS         360
+10 14:EB:B6:6A:76:37 Gnezdo_lounge 2      360
+> 
+```
+
+6.  Отсортировать точки доступа по частоте отправки запросов (beacons) в
+    единицу времени по их убыванию.
+
+```         
+> ap_data %>%
++     mutate(
++         duration = as.numeric(difftime(Last_time_seen, First_time_seen, units = "secs")),
++         beacon_rate = beacons / duration
++     ) %>%
++     arrange(desc(beacon_rate)) %>%
++     select(BSSID, ESSID, beacon_rate) %>% print(n=Inf)
+# A tibble: 96 × 3
+   BSSID             ESSID                                          beacon_rate
+   <chr>             <chr>                                                <dbl>
+ 1 76:E4:ED:B0:5C:9A "Инет от Путина"                                Inf       
+ 2 C2:B5:D7:7F:07:A8 "DIRECT-a8-HP M227f LaserJet"                   Inf       
+ 3 A2:FE:FF:B8:9B:C9 "Christie’s"                                    Inf       
+ 4 BA:2A:7A:DD:38:3E "Айфон (Oleg)"                                  Inf       
+ 5 76:5E:F3:F9:A5:1C "Redmi 9C NFC"                                  Inf       
+ 6 00:03:7F:12:34:56 "MT_FREE"                                       Inf       
+ 7 E8:28:C1:DC:BD:52 "MIREA_HOTSPOT"                                 Inf       
+ 8 00:26:CB:AA:62:72 "GIVC"                                          Inf       
+ 9 02:CF:8B:87:B4:F9 "MT_FREE"                                       Inf       
+10 E8:28:C1:DE:47:D0 "MIREA_GUESTS"                                  Inf       
+11 F2:30:AB:E9:03:ED "iPhone (Uliana)"                                 0.857   
+12 B2:CF:C0:00:4A:60 "Михаил's Galaxy M32"                             0.8     
+13 3A:DA:00:F9:0C:02 "iPhone XS Max \U0001f98a\U0001f431\U0001f98a"    0.556   
+14 02:BC:15:7E:D5:DC "MT_FREE"                                         0.5     
+15 00:3E:1A:5D:14:45 "MT_FREE"                                         0.5     
+16 D2:25:91:F6:6C:D8 "Саня"                                            0.385   
+17 BE:F1:71:D6:10:D7 "C322U21 0566"                                    0.174   
+18 00:03:7A:1A:03:56 "MT_FREE"                                         0.167   
+19 38:1A:52:0D:84:D7 "EBFCD57F-EE81fI_DL_1AO2T"                        0.163   
+20 0A:C5:E1:DB:17:7B "AndroidAP177B"                                   0.145   
+21 1E:93:E3:1B:3C:F4 "Galaxy A71"                                      0.144   
+22 BE:F1:71:D5:0E:53 "C322U06 9080"                                    0.135   
+23 4A:86:77:04:B7:28 "iPhone (Искандер)"                               0.120   
+24 3A:70:96:C6:30:2C "iPhone (Искандер)"                               0.112   
+25 76:70:AF:A4:D2:AF "витя"                                            0.0926  
+26 BE:F1:71:D5:17:8B "C322U13 3965"                                    0.0894  
+27 AA:F4:3F:EE:49:0B "Redmi Note 8 Pro"                                0.0816  
+28 6E:C7:EC:16:DA:1A "Cnet"                                            0.0771  
+29 4A:EC:1E:DB:BF:95 "POCO X5 Pro 5G"                                  0.0766  
+30 56:C5:2B:9F:84:90 "OnePlus 6T"                                      0.0760  
+31 9A:75:A8:B9:04:1E "KC"                                              0.0721  
+32 9C:A5:13:28:D5:89 "Galaxy M012063"                                  0.0698  
+33 36:46:53:81:12:A0 "GGWPRedmi Note 10S"                              0.0657  
+34 38:1A:52:0D:85:1D "EBFCD5C1-EE81fI_DN11AOcY"                        0.0624  
+35 38:1A:52:0D:8F:EC "EBFCD6C2-EE81fI_DR21AOa0"                        0.0406  
+36 2E:FE:13:D0:96:51 "Redmi Note 8 Pro"                                0.0345  
+37 CE:48:E7:86:4E:33 "iPhone (Анастасия)"                              0.0305  
+38 8E:1F:94:96:DA:FD "iPhone (Анастасия)"                              0.0289  
+39 E8:28:C1:DC:B2:50 "MIREA_GUESTS"                                    0.0267  
+40 5E:C7:C0:E4:D7:D4 "realme 10"                                       0.0260  
+41 E8:28:C1:DC:B2:52 "MIREA_HOTSPOT"                                   0.0257  
+42 8E:55:4A:85:5B:01 "Vladimir"                                        0.0255  
+43 38:1A:52:0D:90:5D "EBFCD615-EE81fI_DOL1AO8w"                        0.0212  
+44 38:1A:52:0D:90:A1 "EBFCD597-EE81fI_DMN1AOe1"                        0.0129  
+45 A2:64:E8:97:58:EE "Mi Phone"                                        0.0122  
+46 1E:C2:8E:D8:30:91 "Damy"                                            0.0120  
+47 00:26:99:F2:7A:E2 "GIVC"                                            0.00865 
+48 38:1A:52:0D:97:60 "EBFCD593-EE81fI_DMJ1AOI4"                        0.00685 
+49 00:26:99:F2:7A:E1 "IKB"                                             0.00685 
+50 00:26:99:BA:75:80 "GIVC"                                            0.00628 
+51 A6:02:B9:73:2F:76 "C239U51 0701"                                    0.00627 
+52 00:23:EB:E3:81:FE "IKB"                                             0.00505 
+53 00:23:EB:E3:81:FD "GIVC"                                            0.00494 
+54 9A:9F:06:44:24:5B "Long Huong Galaxy M12"                           0.00481 
+55 A6:02:B9:73:81:47 "C239U53 6056"                                    0.00450 
+56 12:51:07:FF:29:D6 "DESKTOP-KITJO8R 5262"                            0.00428 
+57 92:F5:7B:43:0B:69 "Redmi 12"                                        0.00410 
+58 86:DF:BF:E4:2F:23 "DESKTOP-Q7R0KRV 2433"                            0.00409 
+59 A6:02:B9:73:83:18 "C239U52 6706"                                    0.00371 
+60 E8:28:C1:DD:04:40 "MIREA_HOTSPOT"                                   0.00319 
+61 E8:28:C1:DD:04:41 "MIREA_GUESTS"                                    0.00266 
+62 B6:C4:55:B5:53:24 "Redmi 9"                                         0.00234 
+63 E8:28:C1:DD:04:50 "MIREA_GUESTS"                                    0.00222 
+64 00:23:EB:E3:81:F1 "IKB"                                             0.00203 
+65 E8:28:C1:DC:BD:50 "MIREA_GUESTS"                                    0.00182 
+66 02:67:F1:B0:6C:98 "MT_FREE"                                         0.00154 
+67 E8:28:C1:DC:C8:32 "MIREA_HOTSPOT"                                   0.00126 
+68 E8:28:C1:DC:C6:B0 "MIREA_GUESTS"                                    0.00103 
+69 00:26:CB:AA:62:71 "IKB"                                             0.00102 
+70 E8:28:C1:DC:C8:30 "MIREA_GUESTS"                                    0.000829
+71 00:23:EB:E3:81:F2 "GIVC"                                            0.000730
+72 7E:3A:10:A7:59:4E "vivo Y21"                                        0.000651
+73 E8:28:C1:DC:B2:41 "MIREA_GUESTS"                                    0.000602
+74 E8:28:C1:DC:B2:40 "MIREA_HOTSPOT"                                   0.000543
+75 0A:24:D8:D9:24:70 "IgorKotya"                                       0.000491
+76 EA:7B:9B:D8:56:34 "POCO C40"                                        0.000446
+77 E8:28:C1:DD:04:52 "MIREA_HOTSPOT"                                   0.000409
+78 10:50:72:00:11:08 "MGTS_GPON_B563"                                  0.000400
+79 E8:28:C1:DE:47:D2 "MIREA_HOTSPOT"                                   0.000332
+80 EA:D8:D1:77:C8:08 "DIRECT-08-HP M428fdw LJ"                         0.000200
+81 E8:28:C1:DE:74:32 "MIREA_HOTSPOT"                                   0.000193
+82 56:99:98:EE:5A:4E "tementy-phone"                                   0.000113
+83 2A:E8:A2:02:01:73 "Redmi Note 9S"                                   0       
+84 14:EB:B6:6A:76:37 "Gnezdo_lounge 2"                                 0       
+85 BE:FD:EF:18:92:44 "Димасик"                                         0       
+86 CE:C3:F7:A4:7E:B3 "DIRECT-A6-HP"                                    0       
+87 DC:09:4C:32:34:9B "kak_vashi_dela"                                  0       
+88 E8:28:C1:DB:F5:F0 "MIREA_GUESTS"                                    0       
+89 8A:A3:03:73:52:08 "Galaxy A30s5208"                                 0       
+90 C6:BC:37:7A:67:0D "Mura's Galaxy A52"                             NaN       
+91 8A:4E:75:44:5A:F6 "quiksmobile"                                   NaN       
+92 12:54:1A:C6:FF:71 "Amuler"                                        NaN       
+93 00:26:99:F1:1A:E1 "IKB"                                           NaN       
+94 AE:3E:7F:C8:BC:8E "Igorek✨"                                      NaN       
+95 02:B3:45:5A:05:93 "HONOR 30"                                      NaN       
+96 00:53:7A:99:98:56 "MT_FREE"                                       NaN       
+> 
+```
+
+### Данные клиента
+
+1.  Определить производителя для каждого обнаруженного устройства
+
+```         
+> client_data %>%
++     mutate(
++         Vendor = str_sub(Station_MAC, 1, 8)
++     ) %>%
++     distinct(Vendor)
+# A tibble: 11,792 × 1
+   Vendor  
+   <chr>   
+ 1 CA:66:3B
+ 2 96:35:2D
+ 3 5C:3A:45
+ 4 C0:E4:34
+ 5 5E:8E:A6
+ 6 10:51:07
+ 7 68:54:5A
+ 8 74:4C:A1
+ 9 8A:A3:5A
+10 CA:54:C4
+# ℹ 11,782 more rows
+# ℹ Use `print(n = ...)` to see more rows
+> 
+```
+
+2.  Обнаружить устройства, которые НЕ рандомизируют свой MAC адрес
+
+```         
+> client_data_clean <- client_data %>%
++     filter(
++         !is.na(Station_MAC),
++         Station_MAC != "",
++         Station_MAC != "Station MAC"
++     ) %>%
++     mutate(
++         First_time_seen = as.POSIXct(First_time_seen, format = "%Y-%m-%d %H:%M:%S"),
++         Last_time_seen  = as.POSIXct(Last_time_seen,  format = "%Y-%m-%d %H:%M:%S"),
++         Power   = as.numeric(Power),
++         packets = as.numeric(packets)
++     )
+> 
+> glimpse(client_data_clean)
+Rows: 12,081
+Columns: 7
+$ Station_MAC     <chr> "CA:66:3B:8F:56:DD", "96:35:2D:3D:85:E6", "5C:3A:45:9E:1A:7B", "C0:E4:34:D8:…
+$ First_time_seen <dttm> 2023-07-28 09:13:03, 2023-07-28 09:13:03, 2023-07-28 09:13:03, 2023-07-28 0…
+$ Last_time_seen  <dttm> 2023-07-28 10:59:44, 2023-07-28 09:13:03, 2023-07-28 11:51:54, 2023-07-28 1…
+$ Power           <dbl> -33, -65, -39, -61, -53, -43, -31, -71, -74, -65, -45, -65, -49, -1, -67, -3…
+$ packets         <dbl> 858, 4, 432, 958, 1, 344, 163, 3, 115, 437, 265, 77, 7, 71, 1, 125, 2245, 40…
+$ BSSID           <chr> "BE:F1:71:D5:17:8B", "(not associated)", "BE:F1:71:D6:10:D7", "BE:F1:71:D5:1…
+$ Probed_ESSIDs   <chr> "C322U13 3965", "IT2 Wireless", "C322U21 0566", "C322U13 3965", NA, NA, "C32…
+> 
+> non_randomized <- client_data_clean %>%
++     mutate(
++         second_char = str_sub(Station_MAC, 2, 2),
++         is_randomized = second_char %in% c("2", "6", "a", "e", "A", "E")
++     ) %>%
++     filter(!is_randomized) %>%
++     select(
++         Station_MAC,
++         First_time_seen,
++         Last_time_seen,
++         Power,
++         packets,
++         Probed_ESSIDs
++     ) %>%
++     arrange(desc(packets))
+> 
+> head(non_randomized, 10)
+# A tibble: 10 × 6
+   Station_MAC       First_time_seen     Last_time_seen      Power packets Probed_ESSIDs    
+   <chr>             <dttm>              <dttm>              <dbl>   <dbl> <chr>            
+ 1 00:95:69:E7:7D:21 2023-07-28 09:13:15 2023-07-28 11:56:17   -33    8171 nvripcsuite      
+ 2 00:95:69:E7:7C:ED 2023-07-28 09:13:11 2023-07-28 11:56:13   -55    4096 nvripcsuite      
+ 3 00:95:69:E7:7F:35 2023-07-28 09:13:11 2023-07-28 11:56:07   -69    2245 nvripcsuite      
+ 4 98:F6:21:72:9E:D6 2023-07-28 10:41:15 2023-07-28 11:56:14   -59    2143 Beeline_5G_F2F425
+ 5 C0:E4:34:D8:E7:E5 2023-07-28 09:13:03 2023-07-28 11:53:16   -61     958 C322U13 3965     
+ 6 74:DF:BF:7B:00:19 2023-07-28 09:45:48 2023-07-28 10:31:11   -65     911 MIREA_HOTSPOT    
+ 7 50:3E:AA:33:52:EC 2023-07-28 09:48:25 2023-07-28 11:56:06   -53     862 NA               
+ 8 14:13:33:59:9F:AB 2023-07-28 09:13:12 2023-07-28 10:26:21   -57     849 NA               
+ 9 04:8C:9A:0B:40:EA 2023-07-28 10:27:47 2023-07-28 11:55:51   -73     756 MIREA_HOTSPOT    
+10 BC:F1:71:D5:0E:53 2023-07-28 09:13:17 2023-07-28 11:50:10   -35     675 NA               
+> 
+```
+
+3.  Кластеризовать запросы от устройств к точкам доступа по их именам.
+    Определить время появления устройства в зоне радиовидимости и время
+    выхода его из нее
+
+```         
+> client_data %>%
++     group_by(Station_MAC, Probed_ESSIDs) %>%
++     summarise(
++         first_seen = min(First_time_seen, na.rm = TRUE),
++         last_seen  = max(Last_time_seen, na.rm = TRUE),
++         .groups = "drop"
++     )
+# A tibble: 12,081 × 4
+   Station_MAC       Probed_ESSIDs first_seen          last_seen          
+   <chr>             <chr>         <dttm>              <dttm>             
+ 1 00:04:35:22:4F:75 NA            2023-07-28 09:46:33 2023-07-28 11:15:49
+ 2 00:0C:E7:A8:D6:73 NA            2023-07-28 10:22:07 2023-07-28 10:22:08
+ 3 00:90:4C:E6:54:54 Redmi         2023-07-28 09:16:59 2023-07-28 10:21:15
+ 4 00:95:69:E7:7C:ED nvripcsuite   2023-07-28 09:13:11 2023-07-28 11:56:13
+ 5 00:95:69:E7:7D:21 nvripcsuite   2023-07-28 09:13:15 2023-07-28 11:56:17
+ 6 00:95:69:E7:7F:35 nvripcsuite   2023-07-28 09:13:11 2023-07-28 11:56:07
+ 7 00:98:8C:CE:8E:45 NA            2023-07-28 10:34:53 2023-07-28 10:35:13
+ 8 00:E9:3A:67:93:E9 NA            2023-07-28 10:15:18 2023-07-28 11:55:11
+ 9 00:E9:3A:F8:10:C7 NA            2023-07-28 10:20:19 2023-07-28 10:20:19
+10 00:F4:8D:F7:C5:19 Redmi 12      2023-07-28 10:45:04 2023-07-28 11:43:26
+# ℹ 12,071 more rows
+# ℹ Use `print(n = ...)` to see more rows
+> 
+```
+
+4.  Оценить стабильность уровня сигнала внури кластера во времени.
+    Выявить наиболее стабильный кластер.
+
+```         
+> client_data %>%
++     group_by(Probed_ESSIDs) %>%
++     summarise(
++         signal_sd = sd(Power, na.rm = TRUE),
++         .groups = "drop"
++     ) %>%
++     arrange(signal_sd)
+# A tibble: 108 × 2
+   Probed_ESSIDs  signal_sd
+   <chr>              <dbl>
+ 1 Galaxy A71         0.707
+ 2 Kesha              1.41 
+ 3 podval             1.63 
+ 4 Tupik              2.31 
+ 5 KB-12              2.83 
+ 6 Reconn-Guest       2.83 
+ 7 MT_FREE            2.97 
+ 8 IKB                3.06 
+ 9 OKB                3.06 
+10 Rayskaya_banya     3.06 
+# ℹ 98 more rows
+# ℹ Use `print(n = ...)` to see more rows
+> 
+```
+
+## Оценка результата
+
+В результате лабораторной работы мы получили знания о методах
+исследования радиоэлектронной обстановки, составили представление о
+механизмах работы Wi-Fi сетей, закрепили практические навыки
+использования языка программирования R и знания основных функций
+обработки данных экосистемы tidyverse.
+
+## Вывод
+
+Таким образом, мы научились провоить анализ журналов с использованием
+программного пакета dplyr.
