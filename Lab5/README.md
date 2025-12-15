@@ -5,7 +5,7 @@
 
 1.  Импортируйте данные
 
-<!-- -->
+{R}
 
     > library(tidyverse)
     > library(lubridate)

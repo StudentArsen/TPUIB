@@ -23,6 +23,7 @@ format: md
 
 1.  Сколько строк в starwars?
 
+{R}
 ```         
 > nrow(starwars)
 [1] 87

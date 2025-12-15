@@ -37,7 +37,7 @@
 1.  Запустив задание с помощью `swirl::swirl()`, выбрать курс R
     Programming и пройти первые 5 подкурсов:
 
-<!-- -->
+{R}
 
     > install.packages("swirl")
     WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:

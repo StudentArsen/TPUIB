@@ -23,6 +23,7 @@ format: md
 
 1.  Сколько встроенных в пакет nycflights13 датафреймов?
 
+{R}
 ```         
 > length(ls("package:nycflights13"))
 [1] 5

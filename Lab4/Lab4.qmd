@@ -21,6 +21,7 @@ format: md
 
 1.  Импортируйте данные DNS https://storage.yandexcloud.net/dataset.ctfsec/dns.zip
 
+{R}
 ```         
 > list.files("dns")
 [1] "dns.log"
