@@ -10,7 +10,6 @@ editor:
 
 1.  Импортируйте данные
 
-{R}
 ```         
 > library(tidyverse)
 > library(lubridate)
@@ -74,6 +73,10 @@ editor:
 +         packets = as.numeric(packets)
 +     )
 > 
+```
+
+```{r}
+1 + 2
 ```
 
 3.  Просмотрите общую структуру данных с помощью функции glimpse()

@@ -26,7 +26,7 @@
 1.  Импортируйте данные DNS
     https://storage.yandexcloud.net/dataset.ctfsec/dns.zip
 
-{R}
+<!-- -->
 
     > list.files("dns")
     [1] "dns.log"
@@ -48,6 +48,12 @@
     +         id.orig_p = as.integer(id.orig_p),
     +         id.resp_p = as.integer(id.resp_p)
     +     )
+
+``` r
+1 + 2
+```
+
+    [1] 3
 
 1.  Просмотрите общую структуру данных с помощью функции glimpse()
 

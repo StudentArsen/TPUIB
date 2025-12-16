@@ -42,8 +42,7 @@ editor:
 3.  Запустив задание с помощью `swirl::swirl()`, выбрать курс R
     Programming и пройти первые 5 подкурсов:
 
-{R}
-```         
+```
 > install.packages("swirl")
 WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
 
@@ -108,6 +107,11 @@ yaml 2.3.11 2.3.12              TRUE
     C:\Users\arsen\AppData\Local\Temp\RtmpA5Ne7W\downloaded_packages
 > 
 > 
+```
+
+```{r}
+5+7
+```
 > library(swirl)
 
 | Hi! Type swirl() when you are ready to begin.

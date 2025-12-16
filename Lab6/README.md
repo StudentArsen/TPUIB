@@ -7,7 +7,7 @@
     jsonlite::stream_in(file()). Датасет находится по адресу
     https://storage.yandexcloud.net/iamcth-data/dataset.tar.gz
 
-{R}
+<!-- -->
 
     > library(tidyverse)
     > library(jsonlite)
@@ -51,6 +51,12 @@
     +     )
     > 
     > glimpse(winlog)
+
+``` r
+1 + 2
+```
+
+    [1] 3
 
 3.Просмотрите общую структуру данных с помощью функции glimpse()
 

@@ -5,7 +5,7 @@
 
 1.  Импортируйте данные
 
-{R}
+<!-- -->
 
     > library(tidyverse)
     > library(lubridate)
@@ -69,6 +69,12 @@
     +         packets = as.numeric(packets)
     +     )
     > 
+
+``` r
+1 + 2
+```
+
+    [1] 3
 
 1.  Просмотрите общую структуру данных с помощью функции glimpse()
 
